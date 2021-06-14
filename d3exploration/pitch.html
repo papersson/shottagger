@@ -14,8 +14,8 @@
             
         <script type="text/javascript">
             // https://observablehq.com/@cheung927/d3-js-football-pitch/2
-            lineColor = "#000000";
-            lineWidth = 3;
+            lineColor = "black";
+            lineWidth = 1;
             pitchColor = "#acdf87";
             pitchMultiplier = 10;
             pitchWidth = 105;
@@ -142,33 +142,38 @@
                 .attr('transform', d => `translate(${pitchMultiplier * d.x},${pitchMultiplier * d.y})`)
                 .style('fill', lineColor);    
 
-            pitch.on('click', (event) => {
-                coords = d3.pointer(event);//.map(x => x / pitchMultiplier);
-                console.log(coords.map(x => x / pitchMultiplier));
-                pitch.append("circle")
-                   .attr('class', 'shot-circle')
-                   .attr("cx", coords[0])
-                   .attr("cy", coords[1])
-                   .attr("r", 10)
-                   .style('stroke-width', shotStrokeWidth)
-                   .style('stroke', '#000000')
-                   .style('fill', '#999993');
-            });
 
-            pitch.on('contextmenu', event => {
+            let rScale = d3.scaleSqrt()
+                           .domain([0, 0.34])
+                           .range([2, 20]);
+            pitch.on('click contextmenu', (event) => {
                 event.preventDefault();
-                coords = d3.pointer(event);//.map(x => x / pitchMultiplier);
-                console.log(coords.map(x => x / pitchMultiplier));
+                coords = d3.pointer(event).map(x => x / pitchMultiplier);
+                console.log(coords);
+                const goalCoords = [105, 34];
+                let dx = goalCoords[0] - coords[0];
+                let dy = goalCoords[1] - coords[1];
+                let dist = Math.hypot(dx, dy);
+                let angle = Math.abs(Math.asin(dy / dist));
+                let z = -0.3179833 - 0.14512553*dist - 0.00459135*angle;
+                let xg = sigmoid(z);
+                console.log(dist);
+                console.log(angle * (180 / Math.PI));
+                console.log(xg);
                 pitch.append("circle")
                    .attr('class', 'shot-circle')
-                   .attr("cx", coords[0])
-                   .attr("cy", coords[1])
-                   .attr("r", 10)
+                   .attr("cx", coords[0] * pitchMultiplier)
+                   .attr("cy", coords[1] * pitchMultiplier)
+                   .attr("r", rScale(xg))
                    .style('stroke-width', shotStrokeWidth)
                    .style('stroke', '#000000')
-                   .style('fill', 'yellow');
+                   // Grey if left click, yellow else
+                   .style('fill', event.button == 0 ? '#999993' : "yellow");
             });
 
+            function sigmoid(z) {
+                return 1 / (1 + Math.exp(-z));
+            }
             
         </script>
     </body>
