@@ -141,15 +141,35 @@
                 .attr('d', d => arc(d['arc']))
                 .attr('transform', d => `translate(${pitchMultiplier * d.x},${pitchMultiplier * d.y})`)
                 .style('fill', lineColor);    
-
+            pitch.append('text')
+                 .text('Left click for missed shot')
+                 .attr('class', 'focus-text')
+                 .attr('x', pitchMultiplier * 60)
+                 .attr('y', pitchMultiplier * 10)
+                 .attr('font-family', 'roboto-mono')
+                 .attr('font-size', '25px')
+                 .attr('fill', 'black');
+            pitch.append('text')
+                 .text('Right click for goal')
+                 .attr('class', 'focus-text')
+                 .attr('x', pitchMultiplier * 60)
+                 .attr('y', pitchMultiplier * 13)
+                 .attr('font-family', 'roboto-mono')
+                 .attr('font-size', '25px')
+                 .attr('fill', 'black');
 
             let rScale = d3.scaleSqrt()
                            .domain([0, 0.34])
                            .range([2, 20]);
+            let isVisible = true;
             pitch.on('click contextmenu', (event) => {
                 event.preventDefault();
+                if (isVisible) {
+                    isVisible = false;
+                    d3.selectAll('.focus-text')
+                      .style('visibility', 'hidden');
+                }
                 coords = d3.pointer(event).map(x => x / pitchMultiplier);
-                console.log(coords);
                 const goalCoords = [105, 34];
                 let dx = goalCoords[0] - coords[0];
                 let dy = goalCoords[1] - coords[1];
@@ -157,9 +177,6 @@
                 let angle = Math.abs(Math.asin(dy / dist));
                 let z = -0.3179833 - 0.14512553*dist - 0.00459135*angle;
                 let xg = sigmoid(z);
-                console.log(dist);
-                console.log(angle * (180 / Math.PI));
-                console.log(xg);
                 pitch.append("circle")
                    .attr('class', 'shot-circle')
                    .attr("cx", coords[0] * pitchMultiplier)
@@ -174,6 +191,9 @@
             function sigmoid(z) {
                 return 1 / (1 + Math.exp(-z));
             }
+
+            
+
             
         </script>
     </body>
