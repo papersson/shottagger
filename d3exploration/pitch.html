@@ -10,8 +10,10 @@
     </head>
     <body>
     
-        
-            
+        <div id="score-div" style="text-align: center">
+        </div>
+        <div id="pitch-div" style="text-align: center">
+        </div>
         <script type="text/javascript">
             // https://observablehq.com/@cheung927/d3-js-football-pitch/2
             lineColor = "black";
@@ -20,16 +22,30 @@
             pitchMultiplier = 10;
             pitchWidth = 105;
             pitchHeight = 68;
-            margin = ({top: 20, right: 20, bottom: 20, left: 20});
+            margin = {top: 20, right: 20, bottom: 20, left: 20};
             width = pitchWidth * pitchMultiplier;
             height = pitchHeight * pitchMultiplier;
             shotStrokeWidth = 2;
 
             //const svg = d3.select(DOM.svg(width + margin.left + margin.right, height + margin.top + margin.bottom));
-            let svg = d3.select("body")
+            let scoreSvg = d3.select("#score-div")
+                             .append("svg")
+                             .attr('width', width - 4*margin.left - 4*margin.right)
+                             .attr('height', height/4 + margin.top + margin.bottom);
+            scoreSvg.append('text')
+                    .text("Goals: 0 (0)")
+                    .attr('class', 'score-text')
+                    .attr('x', (width - 4*margin.left - 4*margin.right)/2)
+                    .attr('y', (height/4 + margin.top + margin.bottom)/2)
+                    .attr('font-family', 'roboto-mono')
+                    .attr('font-size', '50px')
+                    .attr('fill', 'black')
+                    .attr('text-anchor', 'middle')
+                    .attr('dominant-baseline', 'central');
+            let svg = d3.select("#pitch-div")
                           .append("svg")
                           .attr("width", width + margin.left + margin.right)
-                          .attr("height", height + margin.top + margin.bottom)
+                          .attr("height", height + margin.top + margin.bottom);
 
             let pitch = svg.append('g')
                             .attr('transform', `translate(${margin.left},${margin.right})`);
@@ -162,6 +178,8 @@
                            .domain([0, 0.34])
                            .range([2, 20]);
             let isVisible = true;
+            let scoreTotal = 0;
+            let xgTotal = 0;
             pitch.on('click contextmenu', (event) => {
                 event.preventDefault();
                 if (isVisible) {
@@ -186,6 +204,12 @@
                    .style('stroke', '#000000')
                    // Grey if left click, yellow else
                    .style('fill', event.button == 0 ? '#999993' : "yellow");
+
+                outcome = event.button == 0 ? 0 : 1;
+                scoreTotal += outcome;
+                xgTotal += xg;
+                d3.select('.score-text')
+                  .text(`Goals: ${scoreTotal} (${xgTotal.toFixed(2)})`);
             });
 
             function sigmoid(z) {
