@@ -175,7 +175,7 @@
                  .attr('fill', 'black');
 
             let rScale = d3.scaleSqrt()
-                           .domain([0, 0.34])
+                           .domain([0, 1])
                            .range([2, 20]);
             let isVisible = true;
             let scoreTotal = 0;
@@ -189,36 +189,48 @@
                 }
                 coords = d3.pointer(event).map(x => x / pitchMultiplier);
                 const goalCoords = [105, 34];
-                let dx = goalCoords[0] - coords[0];
-                let dy = goalCoords[1] - coords[1];
-                let dist = Math.hypot(dx, dy);
-                let angle = Math.abs(Math.asin(dy / dist));
-                let z = -0.3179833 - 0.14512553*dist - 0.00459135*angle;
-                let xg = sigmoid(z);
-                pitch.append("circle")
-                   .attr('class', 'shot-circle')
-                   .attr("cx", coords[0] * pitchMultiplier)
-                   .attr("cy", coords[1] * pitchMultiplier)
-                   .attr("r", rScale(xg))
-                   .style('stroke-width', shotStrokeWidth)
-                   .style('stroke', '#000000')
-                   // Grey if left click, yellow else
-                   .style('fill', event.button == 0 ? '#999993' : "yellow");
 
-                outcome = event.button == 0 ? 0 : 1;
-                scoreTotal += outcome;
-                xgTotal += xg;
-                d3.select('.score-text')
-                  .text(`Goals: ${scoreTotal} (${xgTotal.toFixed(2)})`);
+                fetch('/predict', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(coords)
+                })
+                    .then(response => response.json())
+                    .then(data => {
+                        console.log(`fetch: ${data.xg}`);
+
+                        xg = data.xg;
+
+                        console.log(xg);
+                        pitch.append("circle")
+                           .attr('class', 'shot-circle')
+                           .attr("cx", coords[0] * pitchMultiplier)
+                           .attr("cy", coords[1] * pitchMultiplier)
+                           .attr("r", rScale(xg))
+                           .style('stroke-width', shotStrokeWidth)
+                           .style('stroke', '#000000')
+                           // Grey if left click, yellow else
+                           .style('fill', event.button == 0 ? '#999993' : "yellow");
+
+                        outcome = event.button == 0 ? 0 : 1;
+                        scoreTotal += outcome;
+                        xgTotal += xg;
+                        d3.select('.score-text')
+                          .text(`Goals: ${scoreTotal} (${xgTotal.toFixed(2)})`);
+                    })
+
+//                let dx = goalCoords[0] - coords[0];
+ //               let dy = goalCoords[1] - coords[1];
+  //              let dist = Math.hypot(dx, dy);
+   //             let angle = Math.abs(Math.asin(dy / dist));
+    //            let z = -0.3179833 - 0.14512553*dist - 0.00459135*angle;
+     //           let xg = sigmoid(z);
             });
 
             function sigmoid(z) {
                 return 1 / (1 + Math.exp(-z));
             }
 
-            
-
-            
         </script>
     </body>
 </html>
