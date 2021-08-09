@@ -188,6 +188,7 @@
                       .style('visibility', 'hidden');
                 }
                 coords = d3.pointer(event).map(x => x / pitchMultiplier);
+                console.log(coords);
                 const goalCoords = [105, 34];
 
                 fetch('/predict', {
@@ -211,6 +212,16 @@
                            .style('stroke', '#000000')
                            // Grey if left click, yellow else
                            .style('fill', event.button == 0 ? '#999993' : "yellow");
+
+                        pitch.append('text')
+                            .text(`${xg.toFixed(2)}`)
+                            .attr('x', coords[0] * pitchMultiplier)
+                            .attr('y', coords[1] * pitchMultiplier + 2)
+                            .attr('font-family', 'roboto-mono')
+                            .attr('font-size', '15px')
+                            .attr('fill', 'black')
+                            .attr('text-anchor', 'middle')
+                            .attr('dominant-baseline', 'central');
 
                         outcome = event.button == 0 ? 0 : 1;
                         scoreTotal += outcome;
