@@ -8,11 +8,9 @@
             /* No style rules here yet */		
         </style>
     </head>
-    <body bgcolor='#666666'>
+    <body bgcolor='#bebdb8'>
     
-        <div id="score-div" style="text-align: center">
-        </div>
-        <div id="pitch-div" style="text-align: center">
+        <div id="pitch-div" style="text-align: center; position: relative; top: 50%; transform: translateY(25%);">
         </div>
         <script type="text/javascript">
             // https://observablehq.com/@cheung927/d3-js-football-pitch/2
@@ -28,24 +26,13 @@
             shotStrokeWidth = 2;
 
             //const svg = d3.select(DOM.svg(width + margin.left + margin.right, height + margin.top + margin.bottom));
-            let scoreSvg = d3.select("#score-div")
-                             .append("svg")
-                             .attr('width', width - 4*margin.left - 4*margin.right)
-                             .attr('height', height/4 + margin.top + margin.bottom);
-            scoreSvg.append('text')
-                    .text("Goals: 0 (0)")
-                    .attr('class', 'score-text')
-                    .attr('x', (width - 4*margin.left - 4*margin.right)/2)
-                    .attr('y', (height/4 + margin.top + margin.bottom)/2)
-                    .attr('font-family', 'roboto-mono')
-                    .attr('font-size', '50px')
-                    .attr('fill', 'black')
-                    .attr('text-anchor', 'middle')
-                    .attr('dominant-baseline', 'central');
             let svg = d3.select("#pitch-div")
                           .append("svg")
                           .attr("width", width + margin.left + margin.right)
-                          .attr("height", height + margin.top + margin.bottom);
+                          .attr("height", height + margin.top + margin.bottom)
+                          .style('border', '1px solid #cccccc')
+                          .style('box-shadow', '0px 3px 4px 1px rgba(0, 0, 0, 0.75');
+
 
             let pitch = svg.append('g')
                             .attr('transform', `translate(${margin.left},${margin.right})`);
@@ -158,18 +145,28 @@
                 .attr('transform', d => `translate(${pitchMultiplier * d.x},${pitchMultiplier * d.y})`)
                 .style('fill', lineColor);    
             pitch.append('text')
+                 .text('Goals: 0 (0)')
+                 .attr('class', 'score-text')
+                 .attr('x', pitchMultiplier * 105/2)
+                 .attr('y', pitchMultiplier * 4)
+                 .attr('font-family', 'roboto-mono')
+                 .attr('font-size', '50px')
+                 .attr('fill', 'black')
+                 .attr('text-anchor', 'middle')
+                 .attr('dominant-baseline', 'central');
+            pitch.append('text')
                  .text('Left click for missed shot')
                  .attr('class', 'focus-text-1')
-                 .attr('x', pitchMultiplier * 60)
-                 .attr('y', pitchMultiplier * 10)
+                 .attr('x', pitchMultiplier * 70)
+                 .attr('y', pitchMultiplier * 4)
                  .attr('font-family', 'roboto-mono')
                  .attr('font-size', '25px')
                  .attr('fill', 'black');
             pitch.append('text')
                  .text('Right click for goal')
                  .attr('class', 'focus-text-2')
-                 .attr('x', pitchMultiplier * 60)
-                 .attr('y', pitchMultiplier * 13)
+                 .attr('x', pitchMultiplier * 70)
+                 .attr('y', pitchMultiplier * 7)
                  .attr('font-family', 'roboto-mono')
                  .attr('font-size', '25px')
                  .attr('fill', 'black');
@@ -219,7 +216,7 @@
                        .attr('r', 5)
                        .style('stroke-width', shotStrokeWidth)
                        .style('stroke', 'black')
-                       .style('fill', 'black');
+                       .style('fill', 'red');
                 });
 
                 d3.select('body')
