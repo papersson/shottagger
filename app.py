@@ -1,6 +1,7 @@
 from joblib import load
 import numpy as np
 from flask import Flask, request, render_template
+import os
 
 app = Flask(__name__, template_folder='.')
 
@@ -54,4 +55,5 @@ def defenders_in_fov(defenders, shot_location):
 def home():
     return render_template('index.html')
 
-app.run(debug=True)
+p = int(os.environ.get('PORT', 5000)
+app.run(debug=True, port=p, host='0.0.0.0')
