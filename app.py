@@ -9,11 +9,9 @@ model = load('model.joblib')
 @app.route('/predict', methods=['POST'])
 def predict():
     data = request.get_json()
-    print(data)
     x = to_features(data)
     x = np.array(x).reshape(1, -1)
     xg = round(model.predict_proba(x)[:, 1][0], 2)
-    print(xg)
     return {'xg': xg}
 
 def to_features(data):
@@ -57,6 +55,3 @@ def home():
     return render_template('index.html')
 
 app.run(debug=True)
-
-#x_new = np.array([88, 32]).reshape(1, -1)
-#prediction = model.predict_proba(x_new)[:, 1][0]
