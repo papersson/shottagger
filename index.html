@@ -229,11 +229,7 @@
                           })
                           .then(response => response.json())
                           .then(data => {
-                              console.log(`fetch: ${data.xg}`);
-
                               xg = data.xg;
-
-                              console.log(xg);
                               pitch.append("circle")
                                  .attr('class', 'shot-circle')
                                  .attr("cx", shotLocation[0] * pitchMultiplier)
