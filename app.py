@@ -30,7 +30,9 @@ def to_features(data):
 
     defenders = data['defenders']
     n_defenders = defenders_in_fov(defenders, shot_location)
-    return [*shot_location, distance, angle, n_defenders]
+
+    open_net = 1 if n_defenders == 0 else 0
+    return [*shot_location, distance, angle, n_defenders, open_net]
 
 def point_in_triangle(p0, p1, p2, p):
     # https://stackoverflow.com/questions/2049582/how-to-determine-if-a-point-is-in-a-2d-triangle
@@ -56,5 +58,4 @@ def home():
     return render_template('index.html')
 
 if __name__ == '__main__':
-    p = int(os.environ.get('PORT', 5000))
-    app.run(debug=True, port=p, host='0.0.0.0')
+    app.run()
