@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>xG Shot Tagger</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500&display=swap" rel="stylesheet">
+    <style>
+        body {
+            background-color: #f5f5f5;
+            font-family: 'Poppins', sans-serif;
+            margin: 0;
+            padding: 20px;
+            color: #333;
+        }
+
+        .top-bar {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            background: #ffffff;
+            padding: 15px 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            margin-bottom: 15px;
+        }
+
+        .score {
+            font-size: 20px;
+            font-weight: 500;
+            margin-bottom: 5px;
+        }
+
+        .info {
+            font-size: 16px;
+            color: #555;
+            max-width: 500px;
+        }
+
+        #pitch {
+            border: none;
+            display: inline-block;
+        }
+
+        button {
+            font-size: 14px;
+            background: #ffffff;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            padding: 6px 12px;
+            cursor: pointer;
+            margin-left: 10px;
+            transition: background 0.2s, border-color 0.2s;
+        }
+
+        button:hover {
+            background: #f0f0f0;
+            border-color: #999;
+        }
+
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+    </style>
+</head>
+<body>
+    <div class="top-bar">
+        <div>
+            <div class="score" id="scoreboard">Goals: {{ score_total }} ({{ "%.2f"|format(xg_total) }})</div>
+            <div class="info" id="instructions">
+                Left-click = Miss, Right-click = Goal. Click on the pitch to start.
+            </div>
+        </div>
+        <div>
+            <button id="finalize-button" disabled>Finalize Shot</button>
+            <button id="reset-button">Reset Pitch</button>
+        </div>
+    </div>
+
+    <div style="text-align: center;">
+        <svg id="pitch"></svg>
+    </div>
+
+    <script src="https://d3js.org/d3.v6.min.js"></script>
+    <script>
+    const pitchWidth = 105;
+    const pitchHeight = 68;
+    const pitchMultiplier = 10;
+    const margin = {top: 20, right: 20, bottom: 20, left: 20};
+    const width = pitchWidth * pitchMultiplier;
+    const height = pitchHeight * pitchMultiplier;
+
+    let shotLocation = null;
+    let outcome = 0; // 0=miss,1=goal
+    let defenders = [];
+    let placingDefenders = false;
+    let fovArea = null;
+
+    const svg = d3.select("#pitch")
+        .attr("width", width + margin.left + margin.right)
+        .attr("height", height + margin.top + margin.bottom);
+
+    const pitch = svg.append("g")
+        .attr("transform", `translate(${margin.left},${margin.top})`);
+
+    pitch.append('rect')
+        .attr('x', -margin.left)
+        .attr('y', -margin.top)
+        .attr('width', width + margin.left + margin.right)
+        .attr('height', height + margin.top + margin.bottom)
+        .style('fill', '#D1F1C4');
+
+    drawPitchLines();
+
+    const goalCoords = [105,34];
+    const shotRadiusScale = d3.scaleSqrt().domain([0,1]).range([2,20]);
+    const shotStrokeWidth = 2;
+
+    svg.on('contextmenu', (event) => event.preventDefault());
+    svg.on('mousedown', function(event) {
+        if(placingDefenders) return;
+        event.preventDefault();
+        const button = event.button;
+        outcome = (button === 2) ? 1 : 0;
+        const coords = d3.pointer(event,this);
+        shotLocation = [
+            coords[0]/pitchMultiplier - margin.left/pitchMultiplier,
+            coords[1]/pitchMultiplier - margin.top/pitchMultiplier
+        ];
+
+        clearFOVandDefenders();
+        drawFOV(shotLocation);
+        placingDefenders = true;
+        updateInstructions("Click inside the grey area to place defenders, then click 'Finalize Shot'.");
+        document.getElementById('finalize-button').disabled = false;
+    });
+
+    function drawPitchLines() {
+        const lineColor = "#ffffff";
+        const lineWidth = 2;
+
+        const lines = [
+            {x1:0,x2:pitchWidth,y1:0,y2:0},
+            {x1:0,x2:pitchWidth,y1:pitchHeight,y2:pitchHeight},
+            {x1:0,x2:0,y1:0,y2:pitchHeight},
+            {x1:pitchWidth,x2:pitchWidth,y1:0,y2:pitchHeight},
+            {x1:pitchWidth/2,x2:pitchWidth/2,y1:0,y2:pitchHeight},
+
+            {x1:0,x2:16.5,y1:(pitchHeight/2 - 20.15),y2:(pitchHeight/2 - 20.15)},
+            {x1:16.5,x2:16.5,y1:(pitchHeight/2 - 20.15),y2:(pitchHeight/2 + 20.15)},
+            {x1:0,x2:16.5,y1:(pitchHeight/2 + 20.15),y2:(pitchHeight/2 + 20.15)},
+            {x1:pitchWidth-16.5,x2:pitchWidth,y1:(pitchHeight/2 - 20.15),y2:(pitchHeight/2 - 20.15)},
+            {x1:pitchWidth-16.5,x2:pitchWidth-16.5,y1:(pitchHeight/2 - 20.15),y2:(pitchHeight/2 + 20.15)},
+            {x1:pitchWidth-16.5,x2:pitchWidth,y1:(pitchHeight/2 + 20.15),y2:(pitchHeight/2 + 20.15)},
+        ];
+
+        pitch.selectAll('.pitch-line')
+            .data(lines)
+            .enter()
+            .append('line')
+            .attr('class','pitch-line')
+            .attr('x1', d => d.x1*pitchMultiplier)
+            .attr('x2', d => d.x2*pitchMultiplier)
+            .attr('y1', d => d.y1*pitchMultiplier)
+            .attr('y2', d => d.y2*pitchMultiplier)
+            .style('stroke', lineColor)
+            .style('stroke-width', lineWidth);
+
+        pitch.append('circle')
+            .attr('cx', (pitchWidth/2)*pitchMultiplier)
+            .attr('cy', (pitchHeight/2)*pitchMultiplier)
+            .attr('r', 9.15*pitchMultiplier)
+            .style('stroke',lineColor)
+            .style('stroke-width',lineWidth)
+            .style('fill','none');
+
+        [[11, pitchHeight/2],[pitchWidth-11, pitchHeight/2],[pitchWidth/2, pitchHeight/2]].forEach(pt => {
+            pitch.append('circle')
+                .attr('cx', pt[0]*pitchMultiplier)
+                .attr('cy', pt[1]*pitchMultiplier)
+                .attr('r', 0.3*pitchMultiplier)
+                .style('fill',lineColor);
+        });
+    }
+
+    function drawFOV(shotLoc) {
+        const goal_width = 7.32;
+        const p0 = {x: shotLoc[0]*pitchMultiplier, y: shotLoc[1]*pitchMultiplier};
+        const p1 = {x: goalCoords[0]*pitchMultiplier, y:(goalCoords[1]+goal_width/2)*pitchMultiplier};
+        const p2 = {x: goalCoords[0]*pitchMultiplier, y:(goalCoords[1]-goal_width/2)*pitchMultiplier};
+
+        fovArea = pitch.append('path')
+            .attr('class','fov-area')
+            .attr('d', `M ${p0.x} ${p0.y} L ${p1.x} ${p1.y} L ${p2.x} ${p2.y} Z`)
+            .style('fill','rgba(50,50,50,0.2)')
+            .style('opacity',0.7);
+
+        fovArea.on('click', function(event) {
+            event.stopPropagation();
+            const defC = d3.pointer(event,this);
+            const defLocation = [defC[0]/pitchMultiplier, defC[1]/pitchMultiplier];
+            defenders.push(defLocation);
+            pitch.append('circle')
+                .attr('class','defender')
+                .attr('cx', defLocation[0]*pitchMultiplier)
+                .attr('cy', defLocation[1]*pitchMultiplier)
+                .attr('r',5)
+                .style('stroke-width',shotStrokeWidth)
+                .style('stroke','black')
+                .style('fill','red');
+        });
+    }
+
+    document.getElementById('finalize-button').addEventListener('click', finalizeShot);
+    document.getElementById('reset-button').addEventListener('click', resetPitch);
+
+    function finalizeShot() {
+        if(!placingDefenders || !shotLocation) return;
+        const shotData = {
+            shotLocation: shotLocation,
+            defenders: defenders,
+            outcome: outcome
+        };
+        fetch('/predict', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(shotData)
+        })
+        .then(r => r.json())
+        .then(data => {
+            drawFinalShot(data.xg);
+            updateScoreboard(data.score_total, data.xg_total, data.xg);
+            resetStateForNextShot();
+        })
+        .catch(console.error);
+    }
+
+    function drawFinalShot(xg) {
+        pitch.append('circle')
+            .attr('class','shot-circle')
+            .attr('cx', shotLocation[0]*pitchMultiplier)
+            .attr('cy', shotLocation[1]*pitchMultiplier)
+            .attr('r', shotRadiusScale(xg))
+            .style('stroke-width', shotStrokeWidth)
+            .style('stroke','black')
+            .style('fill', outcome===0 ? '#B0B0B0' : '#FFD700');
+
+        // Add a class for easy removal later
+        pitch.append('text')
+            .attr('class','shot-label')
+            .text(xg.toFixed(2))
+            .attr('x', shotLocation[0]*pitchMultiplier)
+            .attr('y', shotLocation[1]*pitchMultiplier + 25)
+            .attr('font-family','Poppins')
+            .attr('font-size','14px')
+            .attr('fill','#333')
+            .attr('text-anchor','middle')
+            .attr('dominant-baseline','central');
+    }
+
+    function updateScoreboard(score, totalXG, shotXG) {
+        const scoreDiv = document.getElementById('scoreboard');
+        scoreDiv.textContent = `Goals: ${score} (${totalXG.toFixed(2)})`;
+        updateInstructions(`Shot xG: ${shotXG.toFixed(2)}. Click the pitch again to create another shot.`);
+    }
+
+    function resetStateForNextShot() {
+        clearFOVandDefenders();
+        shotLocation = null;
+        defenders = [];
+        placingDefenders = false;
+        document.getElementById('finalize-button').disabled = true;
+    }
+
+    function clearFOVandDefenders() {
+        pitch.selectAll('.fov-area').remove();
+        pitch.selectAll('.defender').remove();
+    }
+
+    function updateInstructions(text) {
+        document.getElementById('instructions').textContent = text;
+    }
+
+    function resetPitch() {
+        // First, reset server state
+        fetch('/reset', {
+            method: 'POST'
+        })
+        .then(r=>r.json())
+        .then(data => {
+            // Update scoreboard to new values
+            const scoreDiv = document.getElementById('scoreboard');
+            scoreDiv.textContent = `Goals: ${data.score_total} (${data.xg_total.toFixed(2)})`;
+            updateInstructions("Left-click = Miss, Right-click = Goal. Click on the pitch to start.");
+
+            // Remove all shots and labels
+            pitch.selectAll('.shot-circle').remove();
+            pitch.selectAll('.shot-label').remove();
+
+            clearFOVandDefenders();
+            resetStateForNextShot();
+        })
+        .catch(console.error);
+    }
+    </script>
+</body>
+</html>

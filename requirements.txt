@@ -1,5 +1,0 @@
-numpy
-joblib
-gunicorn
-flask
-sklearn
